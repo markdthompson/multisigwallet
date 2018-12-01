@@ -39,10 +39,8 @@ contract MultiSignatureWallet {
     function() external payable {}
     
     modifier validRequirement(uint ownerCount, uint _required) {
-        if (   _required > ownerCount
-            || _required == 0
-            || ownerCount == 0)
-            revert();
+        if ( _required > ownerCount || _required == 0 || ownerCount == 0)
+            revert("required number of confirmations must be less than or equal to the number of owners, required confirmations and ownerCount must be greater than 0.");
         _;
     }
 
@@ -56,7 +54,7 @@ contract MultiSignatureWallet {
         public 
         validRequirement(_owners.length, _required) 
     {
-        for (uint i=0; i<_owners.length; i++) {
+        for (uint i = 0; i < _owners.length; i++) {
             isOwner[_owners[i]] = true;
         }
         owners = _owners;
@@ -69,7 +67,7 @@ contract MultiSignatureWallet {
     /// @param data Transaction data payload.
     /// @return Returns transaction ID.
     function submitTransaction(address destination, uint value, bytes memory data) public returns (uint transactionId) {
-        require(isOwner[msg.sender]);
+        require(isOwner[msg.sender], "owner must be sender");
         transactionId = addTransaction(destination, value, data);
         confirmTransaction(transactionId);        
     }
@@ -79,9 +77,9 @@ contract MultiSignatureWallet {
     function confirmTransaction(uint transactionId) 
         public 
     {
-        require(isOwner[msg.sender]);
-        require(transactions[transactionId].destination != 0);
-        require(confirmations[transactionId][msg.sender] == false);
+        require(isOwner[msg.sender], "owner must be sender");
+        require(transactions[transactionId].destination != 0, "destination must not be 0");
+        require(confirmations[transactionId][msg.sender] == false, "confirmation must not already exist");
         
         confirmations[transactionId][msg.sender] = true;
         
@@ -93,10 +91,10 @@ contract MultiSignatureWallet {
     /// @param transactionId Transaction ID.
     function revokeConfirmation(uint transactionId) 
         public {
-        require(isOwner[msg.sender]);
-        require(transactions[transactionId].destination != 0);
-        require(confirmations[transactionId][msg.sender] == true);
-        require(transactions[transactionId].executed == false);
+        require(isOwner[msg.sender], "owner must be sender");
+        require(transactions[transactionId].destination != 0, "destination must not be 0");
+        require(confirmations[transactionId][msg.sender] == true, "confirmation must already exist");
+        require(transactions[transactionId].executed == false, "transaction can't already have executed");
         
         confirmations[transactionId][msg.sender] = false;
         
@@ -107,7 +105,7 @@ contract MultiSignatureWallet {
     /// @param transactionId Transaction ID.
     function executeTransaction(uint transactionId) 
         public {
-        require(transactions[transactionId].executed == false);
+        require(transactions[transactionId].executed == false, "transaction can't already have executed");
         
         if (isConfirmed(transactionId)) {
             Transaction storage trx = transactions[transactionId];
@@ -134,7 +132,7 @@ contract MultiSignatureWallet {
         returns (bool)
     {
         uint count = 0;
-        for (uint i=0; i<owners.length; i++) {
+        for (uint i = 0; i < owners.length; i++) {
             if (confirmations[transactionId][owners[i]])
                 count += 1;
             if (count == required)
